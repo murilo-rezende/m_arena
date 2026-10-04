@@ -12,27 +12,6 @@ A simple arena (linear) memory allocator for C.
 - **Fixed capacity:** usable size is the requested size minus the header. `arena_push` returns `NULL` when the arena runs out of space.
 - **Linux only** for now (uses `mmap` with `MAP_ANONYMOUS`).
 
-## Usage
-
-```c
-#include "m_arena.c"
-
-int main(void) {
-    Arena *arena = arena_init(MiB(12));
-    if (!arena) {
-        perror("mmap");
-        return 1;
-    }
-
-    int *nums = ARENA_PUSH_ARRAY(arena, int, 100);
-    if (nums) nums[0] = 42;
-
-    arena_clear(arena);     // reuse the whole block
-    arena_destroy(arena);   // unmap it
-    return 0;
-}
-```
-
 ## API
 
 | Function | Description |
@@ -43,14 +22,6 @@ int main(void) {
 | `void arena_pop(Arena *arena, u64 size)` | Releases the last `size` bytes (clamped to the current position). |
 | `void arena_pop_to(Arena *arena, u64 pos)` | Releases everything above position `pos`. |
 | `void arena_clear(Arena *arena)` | Resets the arena to empty. |
-
-Helper macros: `KiB(x)`, `MiB(x)`, `GiB(x)`, `ARENA_PUSH_STRUCT(arena, type)`, `ARENA_PUSH_ARRAY(arena, type, n)`.
-
-## Build
-
-```bash
-gcc -Wall -Wextra -o m_arena m_arena.c
-```
 
 ## Notes
 
