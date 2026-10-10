@@ -87,7 +87,7 @@ int main(void) {
 
 }
 
-//Need refactoring
+//Needs refactoring
 Arena *arena_init(u64 size) {
     if (size <= ARENA_HEADER) return NULL;
 
@@ -105,7 +105,7 @@ void arena_destroy(Arena *arena) {
     release_memory(arena);
 }
 
-//Need refactoring
+//Needs refactoring
 void *arena_push(Arena *arena, u64 size) {
     u64 aligned_size = ALIGN_UP(size);
     u64 aligned_pos = ALIGN_UP(arena->pos); 
@@ -119,13 +119,13 @@ void *arena_push(Arena *arena, u64 size) {
     return (u8*)arena->buffer + aligned_pos;
 }
 
-//Need refactoring
+//Needs refactoring
 void arena_pop(Arena *arena, u64 size) {
     if (size > arena->pos) size = arena->pos;
     arena->pos -= size;
 }
 
-//Need refactoring
+//Needs refactoring
 void arena_pop_to(Arena *arena, u64 pos) {
     //If the pos is less then the arena position
     //Pops to the desired position, else 0
@@ -133,7 +133,7 @@ void arena_pop_to(Arena *arena, u64 pos) {
     arena_pop(arena, size);
 }
 
-//Need refactoring
+//Needs refactoring
 void arena_clear(Arena *arena) {
     arena_pop_to(arena, 0);
 }
@@ -150,7 +150,7 @@ u32 get_pagesize(void) {
     return page_size;
 }   
 
-//Reseres a memory region
+//Reserves a memory region
 void* reserve_memory(u64 size) {
     void *mem = mmap(NULL, size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (mem == MAP_FAILED) return NULL;
