@@ -30,6 +30,7 @@ typedef int8_t    i8;
 typedef int16_t   i16;
 typedef int32_t   i32;
 typedef int64_t   i64;
+typedef i32       b32;
 typedef float     f32;
 typedef double    f64;
 
@@ -42,6 +43,15 @@ typedef double    f64;
 #define ARENA_PUSH_STRUCT(arena, type) (type*)arena_push((arena), sizeof(type))
 #define ARENA_PUSH_ARRAY(arena, type, n) (type*)arena_push((arena), sizeof(type) * (n))
 
+//Platform specific functions
+u32 get_pagesize(void);
+void* reserve_memory(u64 size);
+b32 commit_memory(void *ptr, u64 size);
+b32 decommit_memory(void *ptr, u64 size);
+b32 release_memory(Arena *arena);
+
+
+//Need refactoring
 typedef struct Arena {
     u8 *buffer;
     u64 buffer_size;
@@ -77,15 +87,11 @@ int main(void) {
 
 }
 
+//Need refactoring
 Arena *arena_init(u64 size) {
     if (size <= ARENA_HEADER) return NULL;
 
-    void *mem = mmap(NULL,         size,
-                       PROT_READ   | PROT_WRITE,
-                       MAP_PRIVATE | MAP_ANONYMOUS,
-                       -1,           0);
-
-    if (mem == MAP_FAILED) return NULL;
+    void *mem = reserve_memory(size);
 
     //Creates arena and set the usable memory after its header
     Arena *arena = (Arena*)mem;
@@ -96,11 +102,10 @@ Arena *arena_init(u64 size) {
 }
 
 void arena_destroy(Arena *arena) {
-    if (!arena) return;
-
-    munmap(arena, ARENA_HEADER + arena->buffer_size);
+    release_memory(arena);
 }
 
+//Need refactoring
 void *arena_push(Arena *arena, u64 size) {
     u64 aligned_size = ALIGN_UP(size);
     u64 aligned_pos = ALIGN_UP(arena->pos); 
@@ -114,18 +119,66 @@ void *arena_push(Arena *arena, u64 size) {
     return (u8*)arena->buffer + aligned_pos;
 }
 
+//Need refactoring
 void arena_pop(Arena *arena, u64 size) {
     if (size > arena->pos) size = arena->pos;
     arena->pos -= size;
 }
 
+//Need refactoring
 void arena_pop_to(Arena *arena, u64 pos) {
     //If the pos is less then the arena position
     //Pops to the desired position, else 0
     u64 size = pos < arena->pos ? arena->pos - pos : 0;
     arena_pop(arena, size);
 }
+
+//Need refactoring
 void arena_clear(Arena *arena) {
     arena_pop_to(arena, 0);
 }
 
+#ifdef __linux__
+#define _DEFAULT_SOURCE
+
+#include <unistd.h>
+#include <sys/mman.h>
+
+//Returns the page size of the OS
+u32 get_pagesize(void) {
+    u32 page_size = sysconf(_SC_PAGESIZE);
+    return page_size;
+}   
+
+//Reseres a memory region
+void* reserve_memory(u64 size) {
+    void *mem = mmap(NULL, size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (mem == MAP_FAILED) return NULL;
+
+    return mem;
+}
+
+//Commits memory in the given memory region
+b32 commit_memory(void *ptr, u64 size) {
+    i32 commit = mprotect(ptr, size, PROT_READ | PROT_WRITE);
+    return commit == 0;
+}
+
+//Decommits memory in the given memory region
+b32 decommit_memory(void *ptr, u64 size) {
+    i32 decommit = (ptr, size, PROT_NONE);
+    if (decommit != 0) return false;
+    
+    decommit = madvise(ptr, size, MADV_DONTNEED);
+    return decommit == 0;
+}
+
+//Releases the memory region
+b32 release_memory(Arena *arena) {
+    if (!arena) return;
+
+    i32 release = munmap(arena, ARENA_HEADER + arena->buffer_size);
+    return release == 0;
+}
+
+#endif
