@@ -1,19 +1,36 @@
 # m_arena
 
-A simple arena (linear) memory allocator for C.
+A simple arena (linear) allocator for C, in a single header file.
 
-## Overview
+Allocations just move a pointer forward. You never free them one by one: rewind the arena to reuse the memory, or destroy it to release everything at once.
 
-`m_arena` hands out memory from a single contiguous block obtained with `mmap`. Allocation is a pointer bump, so there is no need for symmetrical `malloc()`/`free()` pairs: many allocations can happen without freeing any of them, and the memory is released in bulk, which keeps the free overhead low.
+Linux only.
 
-- **Contiguous block:** one `mmap` call, one `munmap` call.
-- **No per-allocation free:** release everything at once with `arena_clear` / `arena_pop_to` (reuse the block) or `arena_destroy` (unmap it).
-- **Embedded header:** the `Arena` header is stored at the start of the same block, so `arena_init` returns a single handle and no separate storage is needed.
-- **Fixed capacity:** usable size is the requested size minus the header. `arena_push` returns `NULL` when the arena runs out of space.
-- **Linux only** for now (uses `mmap` with `MAP_ANONYMOUS`).
+## Usage
 
-## Notes
+```c
+#include "m_arena.h"
 
-- Memory is never freed individually; the lifetime of an allocation is the lifetime of the arena (or until it is popped).
-- Allocations are aligned to `sizeof(void*)`.
-- After `arena_destroy`, set your pointer to `NULL` to catch use-after-destroy.
+Arena *arena = arena_init(MiB(12));          // reserve 12 MiB
+int *nums = ARENA_PUSH_ARRAY(arena, int, 100); // allocate
+arena_clear(arena);                          // rewind and reuse
+arena_destroy(arena);                        // release everything
+```
+
+## Functions
+
+| Function | What it does |
+|---|---|
+| `arena_init(size)` | Create an arena. Returns `NULL` on failure. |
+| `arena_push(arena, size)` | Allocate bytes. Returns `NULL` if full. |
+| `arena_pop(arena, size)` | Give back the last `size` bytes. |
+| `arena_pop_to(arena, pos)` | Rewind to an earlier position. |
+| `arena_clear(arena)` | Rewind to empty. |
+| `arena_destroy(arena)` | Release the whole arena. |
+
+## Try it
+
+```sh
+gcc test.c -o test
+./test
+```
