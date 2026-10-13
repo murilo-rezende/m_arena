@@ -11,7 +11,11 @@
     https://www.dgtlgrove.com/p/untangling-lifetimes-the-arena-allocator
     https://gist.github.com/Magicalbat/4e085cadeed46c7b6f917ea9e9220d6a
 */
-#define _DEFAULT_SORCE
+
+#ifndef M_ARENA_H
+#define M_ARENA_H
+
+#define _DEFAULT_SOURCE
 
 #include <stddef.h>
 #include <stdio.h>
@@ -39,7 +43,7 @@ typedef double    f64;
 //Align to any power of two
 #define ALIGN_UP_POW2(n, p) (((n) + ((p) - 1)) & ~((u64)(p) - 1))
 
-#define MIN(a, b) ((a) < (b) ? : (b))
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
 
 #define ARENA_COMMIT_SIZE KiB(64)
 #define ARENA_PUSH_STRUCT(arena, type) (type*)arena_push((arena), sizeof(type))
@@ -69,33 +73,6 @@ void *arena_push(Arena *arena, u64 size);
 void arena_pop(Arena *arena, u64 size);
 void arena_pop_to(Arena *arena, u64 pos);
 void arena_clear(Arena *arena);
-
-int main(void) {        
-    Arena *arena = arena_init(MiB(12));
- 
-    if (!arena) {
-        perror("mmap");
-        return 1;
-    }
- 
-    int *nums = ARENA_PUSH_ARRAY(arena, int, 100);
-    if (nums) nums[0] = 42;
-    printf("pos after push: %llu\n", (unsigned long long)arena->pos);
- 
-    //Crosses the initial commit chunk, so arena_push has to commit more
-    u8 *big = arena_push(arena, MiB(1));
-    if (big) big[MiB(1) - 1] = 1;
-    printf("commit_pos after big push: %llu\n", (unsigned long long)arena->commit_pos);
- 
-    //Larger than what is left, must fail cleanly
-    printf("oversized push: %s\n", arena_push(arena, MiB(12)) ? "ok (bug)" : "NULL");
- 
-    arena_clear(arena);
-    printf("pos after clear: %llu\n", (unsigned long long)arena->pos);
- 
-    arena_destroy(arena);
-    return 0;
-}
 
 Arena *arena_init(u64 reserve_size) {
     u64 page_size = get_pagesize();
@@ -216,4 +193,5 @@ b32 release_memory(void *ptr, u64 size) {
     return release == 0;
 }
 
-#endif
+#endif //linux
+#endif //ARENA_H
